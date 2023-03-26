@@ -1,18 +1,24 @@
 #include "mbed.h"
+#include "uLCD_4DGL.h"
+#define RISING 0
+#define FALLING 1
 
+uLCD_4DGL uLCD(D1, D0, D2);
 PwmOut LED(D6);
 AnalogIn lightSensor(A0);
 AnalogOut  aout(PA_4);
-InterruptIn btn(BUTTON1);
-DigitalOut led(LED1);
+DigitalOut pinA(D8);
+InterruptIn pinB(D9);
+DigitalOut led1(LED1);
 
 Thread LEDThread; 
 Thread sensorThread;
-//Thread queueThread;
-//EventQueue queue(32 * EVENTS_EVENT_SIZE);
+Thread queueThread;
+EventQueue queue(32 * EVENTS_EVENT_SIZE);
 
 float sample[100];
-bool sending = false;
+int sample_cnt = 0;
+
 
 void pwmLED()
 {
@@ -30,16 +36,43 @@ void sensor()
 {
     while (true){
         aout = lightSensor.read();
+        if (lightSensor.read() > 0.5)
+            pinA = 1;
+        else
+            pinA = 0;
+        led1 = pinA;
+        sample_cnt++;
+        if (sample_cnt > 100000)
+            sample_cnt = 0;
         ThisThread::sleep_for(1ms);
     }
 }
 
-void sendValue()
+void printText (int state)
 {
-    sending = !sending;
-    led = !led;
+    uLCD.locate(3,2);
+    if (state == RISING){
+        uLCD.color(RED);
+        uLCD.printf("RISE");
+    }
+    else{
+        uLCD.color(BLUE);
+        uLCD.printf("FALL");
+    }
+    uLCD.color(WHITE);
+    uLCD.locate(3,4);
+    uLCD.printf("%5d", sample_cnt);
 }
 
+void riseISR ()
+{
+    queue.call(printText, RISING);
+}
+
+void fallISR ()
+{
+    queue.call(printText, FALLING);
+}
 
 int main()
 {
@@ -54,13 +87,15 @@ int main()
             sample[i] = 0;
     }
     LED.period_ms(5);
-    LEDThread.start(pwmLED);
+    uLCD.text_width(2);
+    uLCD.text_height(2);
     sensorThread.start(sensor);
-    btn.rise(&sendValue);
+    LEDThread.start(pwmLED);
+    queueThread.start(callback(&queue, &EventQueue::dispatch_forever));
+    pinB.rise(&riseISR);
+    pinB.fall(&fallISR);
     while (true){
-        if (sending) {
-            printf("%f\r\n", lightSensor.read());
-        }
+        
         ThisThread::sleep_for(1ms);
     }
 }
