@@ -17,6 +17,7 @@ Thread queueThread;
 EventQueue queue(32 * EVENTS_EVENT_SIZE);
 
 float sample[100];
+float sensorValue;
 int sample_cnt = 0;
 
 
@@ -35,8 +36,9 @@ void pwmLED()
 void sensor()
 {
     while (true){
-        aout = lightSensor.read();
-        if (lightSensor.read() > 0.5)
+        sensorValue = lightSensor.read();
+        aout = sensorValue;
+        if (sensorValue > 0.5)
             pinA = 1;
         else
             pinA = 0;
@@ -94,8 +96,5 @@ int main()
     queueThread.start(callback(&queue, &EventQueue::dispatch_forever));
     pinB.rise(&riseISR);
     pinB.fall(&fallISR);
-    while (true){
-        
-        ThisThread::sleep_for(1ms);
-    }
+    while (true) ;
 }
