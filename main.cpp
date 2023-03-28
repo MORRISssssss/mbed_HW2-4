@@ -49,7 +49,7 @@ void sensor()
             ThisThread::sleep_for(1ms);
         }
         averageValue /= 50;
-        if (averageValue > 0.4)
+        if (averageValue > 0.667)
             pinA = 1;
         else
             pinA = 0;
@@ -71,7 +71,6 @@ void printText (int state, int cnt)
     uLCD.color(WHITE);
     uLCD.locate(2,4);
     uLCD.printf("%4d", cnt);
-    printf("%3d\r\n", cnt);
 }
 
 void riseISR ()
